@@ -144,6 +144,129 @@ var utils=(function(){
         oldEle.parentNode.appendChild(newEle);
     }
 
+    //getElementsByClass:通过元素的样式名获取一组元素集合(兼容全部的浏览器)
+    function getElementsByClass(strClass,context){
+        context=context||document;
+        if(flag){
+            return this.listToArray(context.getElementsByClassName(strClass))
+        }
+        var ary=[],strClassAry=strClass.replace(/(^ +| +$)/g,"").split(/ +/g);
+        var nodeList=context.getElementsByTagName("*");
+        for(var i=0,len=nodeList.length;i<len;i++){
+            var curNode=nodeList[i];
+            var isOk=true;
+            for(var k=0;k<strClassAry.length;k++){
+                var reg=new RegExp("(^ +|)"+strClassAry[k]+"(| +$)");
+                if(!reg.test(curNode.className)){
+                    isOk=false;
+                    break;
+                }
+            }
+            if(isOk){
+                //ary[ary.length]=curNode;
+                ary[i]=curNode;
+            }
+        }
+        return ary;
+    }
+
+    //getCss:获取当前元素所有经过浏览器计算的样式(兼容全部的浏览器)
+    function getCss(curEle,attr){
+        var val=null,reg=null;
+        if(flag){
+            val=window.getComputedStyle(curEle,null)[attr];
+        }else{
+            if(attr==="opacity"){
+                val=curEle.currentStyle["filter"];
+                reg = /^alpha\(opacity=(.+)\)$/;
+                val=reg.test(val)?reg.exec(val)[1] / 100 : 1;
+            }else{
+                val=curEle.currentStyle[attr];
+            }
+        }
+        reg = /^-?(\d|([1-9]\d+))(\.\d+)?(px|em|rem|pt)$/;
+        reg.test(val) ? val = parseFloat(val) : null;
+        return val;
+    }
+
+    //hasClass:验证当前元素中是否包含className这个样式名
+    function hasClass(curEle,className){
+        var reg=new RegExp("(^| +)"+className+"( +|$)");
+        return reg.test(curEle.className)
+    }
+
+    //addClass:给元素增加样式类名
+    function addClass(curEle,className){
+        var ary=className.replace(/(^ +| +$)/g,"").split(/ +/g);
+        for(var i=0,len=ary.length;i<len;i++){
+            var curName=ary[i];
+            if(!hasClass(curEle,curName)){
+                curEle.className+=" "+curName;
+            }
+        }
+    }
+
+    //removeClass:给元素移除样式类名
+    function removeClass(curEle,className){
+        var ary=className.replace(/(^ +! +$)/g,"").split(/ +/g);
+        for(var i=0,len=ary.length;i<len;i++){
+            var curName=ary[i];
+            if(this.hasClass(curEle,curName)){
+                var reg=new RegExp("(^| +)"+className+"( +|$)");
+                curEle.className=curEle.className.replace(reg,"")
+            }
+        }
+    }
+
+    //setCss:给当前元素的某一个样式属性设置值（增加在行内样式）
+    function setCss(curEle,attr,value){
+        if(attr==="float"){
+            curEle["style"]["cssFloat"]=value;
+            curEle["style"]["styleFloat"]=value;
+            return;
+        }
+        if(attr==="opacity"){
+            curEle["style"]["opacity"]=value;
+            curEle["style"]["filter"]="alpha(opacity="+value*100+")"
+            return;
+        }
+        var reg=/^(width|height|top|bottom|left|right|((margin|padding)(Top|Bottom|Left|Right)?))$/;
+        if(reg.test(attr)){
+            if(!isNaN(value)){//如果是有效数字
+                value+="px";
+            }
+        }
+        curEle["style"][attr]=value;
+    }
+
+    //setGroupCss:给当前元素批量的设置样式属性值
+    function setGroupCss(curEle,options){
+        options=options||0;
+        if(options.toString()!=="[object Object]"){
+            return;
+        }
+        for(var key in options){
+            if(options.hasOwnProperty(key)){
+                this.setCss(curEle,key,options[key])
+            }
+        }
+    }
+
+    //css:此方法实现了获取、单独设置、批量设置元素的样式值
+    function css(curEle){
+        var argTwo=arguments[1];
+        if(typeof argTwo==="string"){
+            if(typeof arguments[2]==="undefined"){
+                return getCss.apply(this,arguments)
+            }
+            this.setCss.apply(this,arguments)
+        }
+        argTwo=argTwo||0;
+        if(argTwo.toString()==="[object Object]"){
+            this.setGroupCss.apply(this,arguments)
+        }
+    }
+
     return{
         listToArray: listToArray,
         toJSON: toJSON,
@@ -159,7 +282,15 @@ var utils=(function(){
         append:append,
         prepend:prepend,
         insertBefore:insertBefore,
-        insertAfter:insertAfter
+        insertAfter:insertAfter,
+        getElementsByClass:getElementsByClass,
+        getCss:getCss,
+        hasClass:hasClass,
+        addClass:addClass,
+        removeClass:removeClass,
+        setCss:setCss,
+        setGroupCss:setGroupCss,
+        css:css
     }
 
 })();
