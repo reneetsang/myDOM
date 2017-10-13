@@ -20,6 +20,10 @@ var utils=(function(){
         }
         return jsonObj;
     }
+    //win：获取浏览器的相关盒子模型信息
+    function win(attr){
+        return document.documentElement[attr] || document.body[attr];
+    }
 
     //->children:获取指定标签名的所有的元素子节点(获取所有的元素子节定，我们可以通过元素的标签名在进行过滤)
     function children(curEle,tagName){
@@ -98,6 +102,11 @@ var utils=(function(){
         return ary;
     }
 
+    //->siblings:获取所有的兄弟元素节点
+    function siblings(curEle){
+        return this.prevAll(curEle).concat(this.nextAll(curEle))
+    }
+
     //->index:获取当前元素的索引
     function index(curEle){
         return this.prevAll(curEle).length;
@@ -170,25 +179,6 @@ var utils=(function(){
         return ary;
     }
 
-    //getCss:获取当前元素所有经过浏览器计算的样式(兼容全部的浏览器)
-    function getCss(curEle,attr){
-        var val=null,reg=null;
-        if(flag){
-            val=window.getComputedStyle(curEle,null)[attr];
-        }else{
-            if(attr==="opacity"){
-                val=curEle.currentStyle["filter"];
-                reg = /^alpha\(opacity=(.+)\)$/;
-                val=reg.test(val)?reg.exec(val)[1] / 100 : 1;
-            }else{
-                val=curEle.currentStyle[attr];
-            }
-        }
-        reg = /^-?(\d|([1-9]\d+))(\.\d+)?(px|em|rem|pt)$/;
-        reg.test(val) ? val = parseFloat(val) : null;
-        return val;
-    }
-
     //hasClass:验证当前元素中是否包含className这个样式名
     function hasClass(curEle,className){
         var reg=new RegExp("(^| +)"+className+"( +|$)");
@@ -208,7 +198,7 @@ var utils=(function(){
 
     //removeClass:给元素移除样式类名
     function removeClass(curEle,className){
-        var ary=className.replace(/(^ +! +$)/g,"").split(/ +/g);
+        var ary=className.replace(/(^ +| +$)/g,"").split(/ +/g);
         for(var i=0,len=ary.length;i<len;i++){
             var curName=ary[i];
             if(this.hasClass(curEle,curName)){
@@ -218,16 +208,35 @@ var utils=(function(){
         }
     }
 
+    //getCss:获取当前元素所有经过浏览器计算的样式(兼容全部的浏览器)
+    function getCss(attr){
+        var val=null,reg=null;
+        if(flag){
+            val=window.getComputedStyle(this,null)[attr];
+        }else{
+            if(attr==="opacity"){
+                val=this.currentStyle["filter"];
+                reg = /^alpha\(opacity=(.+)\)$/;
+                val=reg.test(val)?reg.exec(val)[1] / 100 : 1;
+            }else{
+                val=this.currentStyle[attr];
+            }
+        }
+        reg = /^-?(\d|([1-9]\d+))(\.\d+)?(px|em|rem|pt)$/;
+        reg.test(val) ? val = parseFloat(val) : null;
+        return val;
+    }
+
     //setCss:给当前元素的某一个样式属性设置值（增加在行内样式）
-    function setCss(curEle,attr,value){
+    function setCss(attr,value){
         if(attr==="float"){
-            curEle["style"]["cssFloat"]=value;
-            curEle["style"]["styleFloat"]=value;
+            this["style"]["cssFloat"]=value;
+            this["style"]["styleFloat"]=value;
             return;
         }
         if(attr==="opacity"){
-            curEle["style"]["opacity"]=value;
-            curEle["style"]["filter"]="alpha(opacity="+value*100+")"
+            this["style"]["opacity"]=value;
+            this["style"]["filter"]="alpha(opacity="+value*100+")";
             return;
         }
         var reg=/^(width|height|top|bottom|left|right|((margin|padding)(Top|Bottom|Left|Right)?))$/;
@@ -236,46 +245,55 @@ var utils=(function(){
                 value+="px";
             }
         }
-        curEle["style"][attr]=value;
+        this["style"][attr]=value;
     }
 
     //setGroupCss:给当前元素批量的设置样式属性值
-    function setGroupCss(curEle,options){
+    //因为在css中处理了，所以传进来的一定是对象
+    function setGroupCss(options){
+/*
         options=options||0;
         if(options.toString()!=="[object Object]"){
             return;
         }
+        */
         for(var key in options){
             if(options.hasOwnProperty(key)){
-                this.setCss(curEle,key,options[key])
+                //this.setCss(curEle,key,options[key])
+                setCss.call(this,key,options[key])
             }
         }
     }
 
     //css:此方法实现了获取、单独设置、批量设置元素的样式值
+    //优化:getCss、setCss、setGroupCss都不用了，用css实现这几个功能，把getCss、setCss、setGroupCss中的curEle去掉，把方法里的curEle改成this(this变成当前元素)
     function css(curEle){
+        var ary=Array.prototype.slice.call(arguments,1);//把传进来的参数中的curEle去掉
         var argTwo=arguments[1];
         if(typeof argTwo==="string"){
             if(typeof arguments[2]==="undefined"){
-                return getCss.apply(this,arguments)
+                return getCss.apply(curEle,ary); //this变成当前元素
             }
-            this.setCss.apply(this,arguments)
+            setCss.apply(curEle,ary)
         }
         argTwo=argTwo||0;
         if(argTwo.toString()==="[object Object]"){
-            this.setGroupCss.apply(this,arguments)
+            //console.log(this)
+            setGroupCss.apply(curEle,ary)
         }
     }
 
     return{
         listToArray: listToArray,
         toJSON: toJSON,
+        win:win,
         children:children,
         prev:prev,
         next:next,
         prevAll:prevAll,
         nextAll:nextAll,
         sibling:sibling,
+        siblings:siblings,
         index:index,
         firstChild:firstChild,
         lastChild:lastChild,
@@ -284,12 +302,9 @@ var utils=(function(){
         insertBefore:insertBefore,
         insertAfter:insertAfter,
         getElementsByClass:getElementsByClass,
-        getCss:getCss,
         hasClass:hasClass,
         addClass:addClass,
         removeClass:removeClass,
-        setCss:setCss,
-        setGroupCss:setGroupCss,
         css:css
     }
 
